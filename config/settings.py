@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "django_filters",
     #
     "apps.accounts",
+    "apps.settings_app",
 ]
 
 MIDDLEWARE = [

@@ -7,6 +7,7 @@ from drf_spectacular.utils import extend_schema
 from services.authentication_service import AuthenticationService
 from apps.accounts.models import (User)
 from django.shortcuts import get_object_or_404
+from apps.accounts.permissions import HasPermission
 from apps.accounts.serializers import (
     RegisterUserSerializer,
     UserSerializer,
@@ -43,14 +44,15 @@ class CurrentUserAPIView(APIView):
         return CustomeResponse.success(message="Current user retrieved successfully.", data=serializer.data, status=status.HTTP_200_OK)
 
 class UserListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPermission]
+    permission_code = "ACCOUNTS.USER.VIEW"
 
     @extend_schema(
         responses={200: UserSerializer(many=True)},
         operation_id="user_list"
     )
     def get(self, request):
-        users = User.objects.filter(is_deleted=False).prefetch_related("roles").all()
+        users = User.objects.filter(is_deleted=False).prefetch_related("roles")
         serializer = UserSerializer(users, many=True)
         return CustomeResponse.success(message="user list retrieved successfully.", data=serializer.data, status=status.HTTP_200_OK)
 

@@ -53,6 +53,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
         return attrs
 
 class UserSerializer(serializers.ModelSerializer):
+    roles = serializers.SerializerMethodField()
     class Meta:
         model = User
         fields = (
@@ -69,7 +70,9 @@ class UserSerializer(serializers.ModelSerializer):
             "is_email_verified",
             "is_locked",
             "is_deleted",
+            "roles",
         )
+
         read_only_fields = (
             "id",
             "email",
@@ -79,6 +82,16 @@ class UserSerializer(serializers.ModelSerializer):
             "is_locked",
             "is_deleted",
         )
+
+    def get_roles(self, obj):
+        return [
+            {
+                "id": role.id,
+                "name": role.name,
+                "code": role.code,
+            }
+            for role in obj.roles.filter(is_active=True)
+        ]
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -134,6 +147,13 @@ class PermissionSerializer(serializers.ModelSerializer):
             "created_at",
         )
 
+class PermissionCreateUpdateSerializer(serializers.Serializer):
+    code = serializers.CharField(required=True, max_length=50)
+    name = serializers.CharField(required=True, max_length=100)
+    module = serializers.CharField(required=True, max_length=100)
+    is_active = serializers.BooleanField(default=True)
+    description = serializers.CharField(required=False, allow_blank=True)
+
 class RoleSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -155,6 +175,12 @@ class RoleSerializer(serializers.ModelSerializer):
             "updated_at",
         )
 
+class RoleCreateUpdateSerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=50, required=True)
+    name = serializers.CharField(max_length=100, required=True)
+    description = serializers.CharField(required=False, allow_blank=True)
+    is_active = serializers.BooleanField(default=True)
+
 class AssignRoleSerializer(serializers.Serializer):
     role_id = serializers.IntegerField()
 
@@ -164,6 +190,16 @@ class AssignRoleSerializer(serializers.Serializer):
         except Role.DoesNotExist:
             raise serializers.ValidationError({ "role":"Role not found or inactive." })
         return role
+
+class AssignPermissionSerializer(serializers.Serializer):
+    permission_id = serializers.IntegerField()
+
+    def validate_permission_id(self, value):
+        try:
+            permission = Permission.objects.get(pk=value, is_active=True)
+        except Permission.DoesNotExist:
+            raise serializers.ValidationError({ "permission":"Permission not found or inactive." })
+        return permission
 
 
 

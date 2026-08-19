@@ -67,5 +67,17 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []
     objects = UserManager()
 
+    def has_permission(self, permission_codes):
+        if not self.is_authenticated:
+            return False
+        if not self.is_active:
+            return False
+        if self.is_locked:
+            return False
+        if self.is_deleted:
+            return False
+        user_permissions = set(self.roles.filter(is_active=True, permissions__is_active=True,).values_list("permissions__code", flat=True,))
+        return set(permission_codes).issubset(user_permissions)
+
     def __str__(self):
         return self.email
