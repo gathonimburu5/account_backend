@@ -11,6 +11,7 @@ urlpatterns = [
     path("api/account/", include("apps.accounts.urls.user_urls"), name="account"),
     path("api/authenticate/", include("apps.accounts.urls.auth_urls"), name="authenticate"),
     path("api/configuration/", include("apps.accounts.urls.permission_urls"), name="configuration"),
+    path("api/settings/", include("apps.settings_app.urls"), name="settings"),
 ]
 
 
