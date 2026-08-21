@@ -12,6 +12,7 @@ urlpatterns = [
     path("api/authenticate/", include("apps.accounts.urls.auth_urls"), name="authenticate"),
     path("api/configuration/", include("apps.accounts.urls.permission_urls"), name="configuration"),
     path("api/settings/", include("apps.settings_app.urls"), name="settings"),
+    path("api/nominal-account/", include("apps.accounting.urls"), name="nominal-account"),
 ]
 
 
