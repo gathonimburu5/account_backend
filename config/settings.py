@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     #
     "apps.accounts",
     "apps.settings_app",
+    "apps.accounting",
 ]
 
 MIDDLEWARE = [
