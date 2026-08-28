@@ -255,3 +255,19 @@ class NorminalAccountService:
         account_type.is_active = True
         account_type.save(update_fields=["is_active", "updated_at",])
         return account_type
+
+    @staticmethod
+    def get_root_accounts():
+        return (NominalAccount.objects.filter(parent__isnull=True, is_active=True).select_related("account_type").order_by("code"))
+
+    @staticmethod
+    def get_child_accounts(parent_id):
+        return (NominalAccount.objects.filter(parent_id=parent_id, is_active=True).select_related("account_type").order_by("code"))
+
+    @staticmethod
+    def get_posting_accounts():
+        return (NominalAccount.objects.filter(is_active=True, is_posting_account=True).select_related("account_type", "parent").order_by("code"))
+
+    @staticmethod
+    def get_control_accounts():
+        return (NominalAccount.objects.filter(is_active=True, is_control_account=True).select_related("account_type", "parent").order_by("code"))
