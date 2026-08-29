@@ -94,7 +94,7 @@ class NominalAccountCreateUpdateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=150)
     description = serializers.CharField(required=False, allow_blank=True)
     account_type = serializers.PrimaryKeyRelatedField(queryset=AccountType.objects.filter(is_active=True))
-    parent = serializers.PrimaryKeyRelatedField(queryset=NominalAccount.objects.filter.all(), required=False, allow_null=True)
+    parent = serializers.PrimaryKeyRelatedField(queryset=NominalAccount.objects.filter(is_active=True).all(), required=False, allow_null=True)
     is_control_account = serializers.BooleanField(required=False, default=False)
     is_posting_account = serializers.BooleanField(required=False, default=True)
     is_active = serializers.BooleanField(required=False, default=True)
