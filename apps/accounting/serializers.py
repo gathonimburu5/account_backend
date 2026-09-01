@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import NominalAccount, AccountType
+from .models import NominalAccount, AccountType, Journal, JournalLine
+from apps.settings_app.models import FinancialPeriod
 
 class AccountTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,6 +105,94 @@ class NominalAccountCreateUpdateSerializer(serializers.Serializer):
         if (self.instance and parent and parent.pk == self.instance.pk):
             raise serializers.ValidationError({ "parent": "An account cannot be its own parent." })
         return attrs
+class JournalLineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JournalLine
+        fields = (
+            "id",
+            "nominal_account",
+            "description",
+            "debit",
+            "credit",
+        )
+        read_only_fields = (
+            "id",
+        )
 
+    def validate(self, attrs):
+        debit = attrs.get("debit", 0)
+        credit = attrs.get("credit", 0)
+
+        if debit > 0 and credit > 0:
+            raise serializers.ValidationError({ "detail": ("A journal line cannot have both debit and credit.") })
+
+        if debit == 0 and credit == 0:
+            raise serializers.ValidationError({ "detail": ("A journal line must have either a debit or a credit amount.") })
+
+        return attrs
+class JournalSerializer(serializers.ModelSerializer):
+    lines = JournalLineSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Journal
+        fields = (
+            "id",
+            "journal_number",
+            "transaction_date",
+            "description",
+            "reference",
+            "status",
+            "financial_period",
+            "created_by",
+            "posted_at",
+            "posted_by",
+            "reversed_journal",
+            "lines",
+            "created_at",
+            "updated_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "journal_number",
+            "status",
+            "created_by",
+            "posted_at",
+            "posted_by",
+            "reversed_journal",
+            "created_at",
+            "updated_at",
+            "lines",
+        )
+class JournalCreateSerializer(serializers.Serializer):
+    transaction_date = serializers.DateField()
+    description = serializers.CharField(max_length=255,)
+    reference = serializers.CharField(max_length=100, required=False, allow_blank=True,)
+    financial_period = serializers.PrimaryKeyRelatedField(queryset=FinancialPeriod.objects.all(),)
+    lines = JournalLineSerializer(many=True,)
+
+    def validate_lines(self, lines):
+        if len(lines) < 2:
+            raise serializers.ValidationError("A journal must contain at least two lines.")
+
+        total_debit = sum(line.get("debit", 0) for line in lines)
+        total_credit = sum(line.get("credit", 0) for line in lines)
+
+        if total_debit != total_credit:
+            raise serializers.ValidationError("Total debit must equal total credit.")
+
+        return lines
+
+    def validate(self, attrs):
+        transaction_date = attrs.get("transaction_date")
+        financial_period = attrs.get("financial_period")
+
+        if transaction_date < financial_period.start_date:
+            raise serializers.ValidationError({ "transaction_date": ("Transaction date cannot be before the financial period start date.") })
+
+        if transaction_date > financial_period.end_date:
+            raise serializers.ValidationError({ "transaction_date": ("Transaction date cannot be after the financial period end date.") })
+
+        return attrs
 
 

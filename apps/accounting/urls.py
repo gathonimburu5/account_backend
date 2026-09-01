@@ -2,10 +2,15 @@ from django.urls import path
 from .views import (
     NominalAccountListAPIView, CreateNominalAccountAPIView, NominalAccountDetailAPIView, UpdateNominalAccountAPIView, ActivateNominalAccountAPIView, DeactivateNominalAccountAPIView,
     AccountTypeListAPIView, CreateAccountTypeAPIView, AccountTypeDetailAPIView, UpdateAccountTypeAPIView, ActivateAccountTypeAPIView, DeactivateAccountTypeAPIView, ActiveAccountTypeAPIView,
+    RootNominalAccountListAPIView, ChildrenNominalAccountAPIView, PostingNominalAccountsAPIView, ControlNominalAccountAPIView
 )
 
 urlpatterns = [
     path("accounts", NominalAccountListAPIView.as_view(), name="account-list"),
+    path("accounts-roots", RootNominalAccountListAPIView.as_view(), name="root-account-list"),
+    path("accounts/<int:pk>/children", ChildrenNominalAccountAPIView.as_view(), name="children-account-list"),
+    path("accounts-posting", PostingNominalAccountsAPIView.as_view(), name="posting-account-list"),
+    path("accounts-control", ControlNominalAccountAPIView.as_view(), name="control-account-list"),
     path("accounts/create", CreateNominalAccountAPIView.as_view(), name="account-create"),
     path("accounts/<int:pk>", NominalAccountDetailAPIView.as_view(), name="account-detail"),
     path("accounts/<int:pk>/update", UpdateNominalAccountAPIView.as_view(), name="account-update"),

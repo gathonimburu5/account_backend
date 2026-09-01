@@ -49,6 +49,30 @@ class ChildrenNominalAccountAPIView(APIView):
             status=status.HTTP_200_OK,
             data=serializer.data
         )
+class PostingNominalAccountsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: NominalAccountSerializer(many=True)}, operation_id="posting_account_list")
+    def get(self, request):
+        posting_account = NorminalAccountService.get_posting_accounts()
+        serializer = NominalAccountSerializer(posting_account, many=True)
+        return CustomeResponse.success(
+            message="posting account retrieved",
+            status=status.HTTP_200_OK,
+            data=serializer.data
+        )
+class ControlNominalAccountAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: NominalAccountSerializer(many=True)}, operation_id="control_account_list")
+    def get(self, request):
+        control_account = NorminalAccountService.get_control_accounts()
+        serializer = NominalAccountSerializer(control_account, many=True)
+        return CustomeResponse.success(
+            message="control account retrieved",
+            status=status.HTTP_200_OK,
+            data=serializer.data
+        )
 class CreateNominalAccountAPIView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [FormParser]
