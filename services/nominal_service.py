@@ -1,6 +1,7 @@
 from rest_framework.exceptions import ValidationError
 from django.db import transaction
-from apps.accounting.models import NominalAccount, AccountType
+from apps.accounting.models import (NominalAccount, AccountType, Journal, JournalLine)
+from django.utils import timezone
 
 class NorminalAccountService:
     UNSET = object()
@@ -271,3 +272,29 @@ class NorminalAccountService:
     @staticmethod
     def get_control_accounts():
         return (NominalAccount.objects.filter(is_active=True, is_control_account=True).select_related("account_type", "parent").order_by("code"))
+    @staticmethod
+    def get_journals():
+        return (Journal.objects.select_related(
+            "financial_period",
+            "created_by",
+            "posted_by",
+            "reversed_journal"
+        ).prefetch_related(
+            "lines__nominal_account"
+        ).order_by("-transaction_date", "-id"))
+    @staticmethod
+    def get_journal(pk):
+        try:
+            return (
+                Journal.objects.select_related(
+                    "financial_period",
+                    "created_by",
+                    "posted_by",
+                    "reversed_journal"
+                ).prefetch_related(
+                    "lines__nominal_account"
+                ).get(pk=pk)
+            )
+        except Journal.DoesNotExist:
+            raise ValidationError({ "detail": "Journal not found." })
+    
