@@ -53,6 +53,7 @@ class Journal(models.Model):
         DRAFT = "DRAFT", "Draft"
         POSTED = "POSTED", "Posted"
         REVERSED = "REVERSED", "Reversed"
+        ACTIVE = "ACTIVE", "Active"
 
     journal_number = models.CharField(max_length=50, unique=True)
     transaction_date = models.DateField()
