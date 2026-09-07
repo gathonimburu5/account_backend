@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     NominalAccountListAPIView, CreateNominalAccountAPIView, NominalAccountDetailAPIView, UpdateNominalAccountAPIView, ActivateNominalAccountAPIView, DeactivateNominalAccountAPIView,
     AccountTypeListAPIView, CreateAccountTypeAPIView, AccountTypeDetailAPIView, UpdateAccountTypeAPIView, ActivateAccountTypeAPIView, DeactivateAccountTypeAPIView, ActiveAccountTypeAPIView,
-    RootNominalAccountListAPIView, ChildrenNominalAccountAPIView, PostingNominalAccountsAPIView, ControlNominalAccountAPIView
+    RootNominalAccountListAPIView, ChildrenNominalAccountAPIView, PostingNominalAccountsAPIView, ControlNominalAccountAPIView,
+    JournalListAPIView, JournalCreateAPIView, JournalDetailAPIView, JournalPostAPIView
 )
 
 urlpatterns = [
@@ -23,5 +24,9 @@ urlpatterns = [
     path("account-types/<int:pk>/activate", ActivateAccountTypeAPIView.as_view(), name="account-type-activate"),
     path("account-types/<int:pk>/deactivate", DeactivateAccountTypeAPIView.as_view(), name="account-type-deactivate"),
     path("account-types/active", ActiveAccountTypeAPIView.as_view(), name="account-type-active"),
+    path("journal/", JournalListAPIView.as_view(), name="journal-list"),
+    path("journal/create/", JournalCreateAPIView.as_view(), name="journal-create"),
+    path("journal/<int:pk>/", JournalDetailAPIView.as_view(), name="journal-details"),
+    path("journal/<int:pk>/post/", JournalPostAPIView.as_view(), name="journal-post"),
 ]
 
