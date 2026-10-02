@@ -2,6 +2,7 @@ from rest_framework.exceptions import ValidationError
 from django.db import transaction
 from apps.accounting.models import (NominalAccount, AccountType, Journal, JournalLine)
 from django.utils import timezone
+from decimal import Decimal
 
 class NorminalAccountService:
     UNSET = object()
@@ -297,4 +298,120 @@ class NorminalAccountService:
             )
         except Journal.DoesNotExist:
             raise ValidationError({ "detail": "Journal not found." })
-    
+    @staticmethod
+    def _validate_period(financial_period, transaction_date):
+        if (financial_period.status != financial_period.StatusChoices.ACTIVE):
+            raise ValidationError({ "financial_period":"The financial period is not active." })
+        if transaction_date < financial_period.start_date:
+            raise ValidationError({ "transaction_date":"The transaction date cannot be after the financial period end date." })
+
+    @staticmethod
+    def _validate_lines(lines):
+        if len(lines) < 0:
+            raise ValidationError({ "lines":"A journal must contain at least two lines." })
+        total_debit = Decimal("0.00")
+        total_credit = Decimal("0.00")
+        for line in lines:
+            debit = Decimal(str(line.get("debit", "0.00")))
+            credit = Decimal(str(line.get("credit", "0.00")))
+            if debit < 0 or credit < 0:
+                raise ValidationError({ "lines":"Debit and credit amounts cannot be negative." })
+            if debit > 0 and credit > 0:
+                raise ValidationError({ "lines":"A journal line cannot have both debit and credit amounts." })
+            if debit == 0 and credit == 0:
+                raise ValidationError({ "lines":"A journal line must contain either a debit or credit amount." })
+            total_debit += debit
+            total_credit += credit
+        if total_debit != total_credit:
+            raise ValidationError({ "lines":"The total debit must be equal total credit." })
+
+    @staticmethod
+    def _validate_accounts(lines):
+        account_ids = [line["nominal_account"].pk for line in lines]
+        accounts = (NominalAccount.objects.filter(pk__in=account_ids, is_active=True,).select_related("account_type"))
+        accounts_by_id = {
+            account.pk: account for account in accounts
+        }
+        for line in lines:
+            account = accounts_by_id.get(line["nominal_account"].pk)
+            if not account:
+                raise ValidationError({ "lines":"One or more nominal accounts are invalid or inactive." })
+            if not account.is_posting_account:
+                raise ValidationError({ "lines":f"{account.code} - {account.name} is not a posting account." })
+
+    @staticmethod
+    def _generate_journal_number():
+        last_journal = (
+            Journal.objects.order_by("-id").first()
+        )
+        if not last_journal:
+            next_number = 1
+        else:
+            try:
+                next_number = (int(last_journal.journal_number.replace("JV-", "")) + 1)
+            except ValueError:
+                next_number = last_journal.id + 1
+        return f"JV-{next_number:06d}"
+
+    @staticmethod
+    @transaction.atomic
+    def create_journal(*, transaction_date, description, reference="", financial_period, lines, created_by,):
+        NorminalAccountService._validate_period(financial_period, transaction_date)
+        NorminalAccountService._validate_lines(lines)
+        NorminalAccountService._validate_accounts(lines)
+        journal_number = (NorminalAccountService._generate_journal_number())
+        journal = Journal.objects.create(
+            journal_number=journal_number,
+            transaction_date=transaction_date,
+            description=description,
+            reference=reference,
+            financial_period=financial_period,
+            created_by=created_by,
+            status=Journal.StatusChoices.DRAFT,
+        )
+
+        JournalLine.objects.bulk_create(
+            [
+                JournalLine(
+                    journal=journal,
+                    nominal_account=line["nominal_account"],
+                    description=line.get("description", ""),
+                    debit = line.get("debit", Decimal("0.00")),
+                    credit = line.get("credit", Decimal("0.00")),
+                )
+                for line in lines
+            ]
+        )
+
+        return NorminalAccountService.get_journal(journal.pk)
+
+    @staticmethod
+    @transaction.atomic
+    def post_journal(*, journal, posted_by):
+        if(journal.status != Journal.StatusChoices.DRAFT):
+            raise ValidationError({ "detail":"Only draft journals can be posted." })
+        NorminalAccountService._validate_period(journal.financial_period, journal.transaction_date)
+        lines = list(journal.lines.all())
+        NorminalAccountService._validate_lines(
+            [
+                {
+                    "nominal_account": line.nominal_account,
+                    "debit": line.debit,
+                    "credit": line.credit,
+                }
+                for line in lines
+            ]
+        )
+
+        journal.status = (Journal.StatusChoices.POSTED)
+        journal.posted_by = posted_by
+        journal.posted_at = timezone.now()
+
+        journal.save(update_fields=[
+            "status",
+            "posted_by",
+            "posted_at",
+            "updated_at",
+        ])
+
+        return journal

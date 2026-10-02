@@ -6,11 +6,12 @@ from commons.responses import CustomeResponse
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
 from apps.accounts.permissions import HasPermission
-from apps.accounting.models import NominalAccount, AccountType
+from apps.accounting.models import (NominalAccount, AccountType, Journal, JournalLine)
 from services.nominal_service import NorminalAccountService
 from apps.accounting.serializers import (
     NominalAccountSerializer, NominalAccountCreateUpdateSerializer,
     AccountTypeSerializer, AccountTypeCreateUpdateSerializer,
+    JournalSerializer, JournalLineSerializer, JournalCreateSerializer,
 )
 
 class NominalAccountListAPIView(APIView):
@@ -232,4 +233,60 @@ class ActiveAccountTypeAPIView(APIView):
             message="retrieved successfully.",
             status=status.HTTP_200_OK,
             data=serializer.data
+        )
+class JournalListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: JournalSerializer(many=True)}, operation_id="journal_list")
+    def get(self, request):
+        journals = NorminalAccountService.get_journals()
+        serializer = JournalSerializer(journals, many=True)
+        return CustomeResponse.success(
+            status=status.HTTP_200_OK,
+            message="journal retrieved successfully.",
+            data=serializer.data
+        )
+class JournalCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=JournalCreateSerializer, responses={201: JournalSerializer}, operation_id="journal_create")
+    def post(self, request):
+        serializer = JournalCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        journal = NorminalAccountService.create_journal(created_by=request.user, **serializer.validated_data)
+        serializer_response = JournalSerializer(journal)
+        return CustomeResponse.success(
+            status=status.HTTP_201_CREATED,
+            message="successfully created journal",
+            data=serializer_response.data
+        )
+class JournalDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: JournalSerializer}, operation_id="journal_details")
+    def get(self, request, pk):
+        journal = NorminalAccountService.get_journal(pk)
+        serializer = JournalSerializer(journal)
+        return CustomeResponse.success(
+            status=status.HTTP_200_OK,
+            message="journal retrieved successfully.",
+            data=serializer.data
+        )
+class JournalPostAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=JournalCreateSerializer, responses={200: JournalSerializer}, operation_id="journal_post")
+    def post(self, request, pk):
+        journal = NorminalAccountService.get_journal(pk)
+        serializer = JournalCreateSerializer(journal, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        journal = NorminalAccountService.post_journal(
+            **serializer.validated_data,
+            posted_by=request.user
+        )
+        serializer_response = JournalSerializer(journal)
+        return CustomeResponse.success(
+            status=status.HTTP_200_OK,
+            message="retrieved successfully.",
+            data=serializer_response.data
         )
