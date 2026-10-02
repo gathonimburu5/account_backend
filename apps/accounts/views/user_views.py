@@ -16,7 +16,7 @@ from apps.accounts.serializers import (
 )
 
 class RegisterUserAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser]
 
     @extend_schema(
@@ -44,8 +44,8 @@ class CurrentUserAPIView(APIView):
         return CustomeResponse.success(message="Current user retrieved successfully.", data=serializer.data, status=status.HTTP_200_OK)
 
 class UserListAPIView(APIView):
-    permission_classes = [IsAuthenticated, HasPermission]
-    permission_code = "ACCOUNTS.USER.VIEW"
+    permission_classes = [IsAuthenticated]
+    # permission_code = "ACCOUNTS.USER.VIEW", HasPermission
 
     @extend_schema(
         responses={200: UserSerializer(many=True)},
