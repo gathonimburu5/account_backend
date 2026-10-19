@@ -8,10 +8,14 @@ from django.shortcuts import get_object_or_404
 from apps.accounts.permissions import HasPermission
 from apps.accounting.models import (NominalAccount, AccountType, Journal, JournalLine)
 from services.nominal_service import NorminalAccountService
+from django.core.exceptions import ValidationError
 from apps.accounting.serializers import (
     NominalAccountSerializer, NominalAccountCreateUpdateSerializer,
     AccountTypeSerializer, AccountTypeCreateUpdateSerializer,
     JournalSerializer, JournalLineSerializer, JournalCreateSerializer,
+    GeneralLedgerLineSerializer, GeneralLedgerSerializer, GeneralLedgerQuerySerializer,
+    TrialBalanceQuerySerializer, TrialBalanceSerializer, ProfitLossSerializer, ProfitLossQuerySerializer,
+    BalanceSheetQuerySerializer, BalanceSheetSerializer
 )
 
 class NominalAccountListAPIView(APIView):
@@ -289,4 +293,67 @@ class JournalPostAPIView(APIView):
             status=status.HTTP_200_OK,
             message="retrieved successfully.",
             data=serializer_response.data
+        )
+
+class GeneralLedgerAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query_serilaizer = GeneralLedgerQuerySerializer(data=request.query_params)
+        query_serilaizer.is_valid(raise_exception=True)
+        try:
+            ledger = NorminalAccountService.get_general_ledger(**query_serilaizer.validated_data)
+        except ValidationError as exc:
+            raise ValidationError(exc.message)
+        response_serializer = GeneralLedgerSerializer(ledger)
+        return CustomeResponse.success(
+            status= status.HTTP_200_OK,
+            message= "General ledger retrieved successfully.",
+            data= response_serializer.data
+        )
+class TrialBalanceAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query_serializer = TrialBalanceQuerySerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        try:
+            trial_balance = NorminalAccountService.get_trial_balance(**query_serializer.validated_data)
+        except ValidationError as exc:
+            raise ValidationError(exc.message)
+        response_serializer = TrialBalanceSerializer(trial_balance)
+        return CustomeResponse.success(
+            status=status.HTTP_200_OK,
+            message="Trial Balance retrieved successfully.",
+            data=response_serializer.data
+        )
+class ProfitLossAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        query_serializer = ProfitLossQuerySerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        try:
+            profit_loss = NorminalAccountService.getProfitAndLoss(**query_serializer.validated_data)
+        except ValidationError as exc:
+            raise ValidationError(exc.message)
+        response_serializer = ProfitLossSerializer(profit_loss)
+        return CustomeResponse.success(
+            status=status.HTTP_200_OK,
+            message="Profit and Loss retrieved successfully.",
+            data=response_serializer.data
+        )
+class BalanceSheetAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        query_serializer = BalanceSheetQuerySerializer(data=request.query_params)
+        query_serializer.is_valid(raise_exception=True)
+        try:
+            balance_sheet = NorminalAccountService.getBalanceSheet(**query_serializer.validated_data)
+        except ValidationError as exc:
+            raise ValidationError(exc.message)
+        response_serializer = BalanceSheetSerializer(balance_sheet)
+        return CustomeResponse.success(
+            status=status.HTTP_200_OK,
+            message="Balance sheet retrieved successfully.",
+            data=response_serializer.data,
         )

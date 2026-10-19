@@ -79,7 +79,7 @@ class UserDetailAPIView(APIView):
         user = self.get_object(pk)
         if not user:
             return CustomeResponse.error(message="user not found.", status=status.HTTP_400_BAD_REQUEST)
-        serializer = UpdateUserSerializer(user)
+        serializer = UpdateUserSerializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         update_response = AuthenticationService.update_user(user=user, request=request, validated_data=serializer.validated_data)
         serializer_response = UserSerializer(update_response)

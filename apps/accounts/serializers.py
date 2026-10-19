@@ -126,8 +126,12 @@ class UpdateUserSerializer(serializers.Serializer):
     address = serializers.CharField(required=False, write_only=True)
 
     def validate_phone_number(self, value):
-        if value and User.objects.filter(phone_number=value).exists():
-            raise serializers.ValidationError("User with this phone number already exists.")
+        if value:
+            exists = User.objects.filter(phone_number=value).exclude(pk=self.instance.pk).exists()
+            if exists:
+                raise serializers.ValidationError("A user with this phone number already exists.")
+        # if value and User.objects.filter(phone_number=value).exists():
+        #     raise serializers.ValidationError("User with this phone number already exists.")
         return value
 
 class PermissionSerializer(serializers.ModelSerializer):

@@ -1,9 +1,15 @@
 from django.urls import path
 from .views import (
-    NominalAccountListAPIView, CreateNominalAccountAPIView, NominalAccountDetailAPIView, UpdateNominalAccountAPIView, ActivateNominalAccountAPIView, DeactivateNominalAccountAPIView,
-    AccountTypeListAPIView, CreateAccountTypeAPIView, AccountTypeDetailAPIView, UpdateAccountTypeAPIView, ActivateAccountTypeAPIView, DeactivateAccountTypeAPIView, ActiveAccountTypeAPIView,
-    RootNominalAccountListAPIView, ChildrenNominalAccountAPIView, PostingNominalAccountsAPIView, ControlNominalAccountAPIView,
-    JournalListAPIView, JournalCreateAPIView, JournalDetailAPIView, JournalPostAPIView
+    NominalAccountListAPIView, CreateNominalAccountAPIView, 
+    NominalAccountDetailAPIView, UpdateNominalAccountAPIView, 
+    ActivateNominalAccountAPIView, DeactivateNominalAccountAPIView,
+    AccountTypeListAPIView, CreateAccountTypeAPIView, AccountTypeDetailAPIView, 
+    UpdateAccountTypeAPIView, ActivateAccountTypeAPIView, 
+    DeactivateAccountTypeAPIView, ActiveAccountTypeAPIView,
+    RootNominalAccountListAPIView, ChildrenNominalAccountAPIView, 
+    PostingNominalAccountsAPIView, ControlNominalAccountAPIView,
+    JournalListAPIView, JournalCreateAPIView, 
+    JournalDetailAPIView, JournalPostAPIView, GeneralLedgerAPIView, TrialBalanceAPIView, ProfitLossAPIView, BalanceSheetAPIView
 )
 
 urlpatterns = [
@@ -28,5 +34,9 @@ urlpatterns = [
     path("journal/create/", JournalCreateAPIView.as_view(), name="journal-create"),
     path("journal/<int:pk>/", JournalDetailAPIView.as_view(), name="journal-details"),
     path("journal/<int:pk>/post/", JournalPostAPIView.as_view(), name="journal-post"),
+    path("general-ledger/", GeneralLedgerAPIView.as_view(), name="general-ledger"),
+    path("trial-balance/", TrialBalanceAPIView.as_view(), name="trial-balance"),
+    path("profit-loss/", ProfitLossAPIView.as_view(), name="profit-loss"),
+    path("balance-sheet/", BalanceSheetAPIView.as_view(), name="balance-sheet"),
 ]
 

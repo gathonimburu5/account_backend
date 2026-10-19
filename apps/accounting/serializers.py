@@ -194,5 +194,92 @@ class JournalCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({ "transaction_date": ("Transaction date cannot be after the financial period end date.") })
 
         return attrs
+class GeneralLedgerLineSerializer(serializers.Serializer):
+    journal_id = serializers.IntegerField()
+    journal_number = serializers.CharField()
+    transaction_date = serializers.DateField()
+    description = serializers.CharField()
+    reference = serializers.CharField(allow_blank=True)
+    nominal_account_id = serializers.IntegerField()
+    nominal_account_code = serializers.CharField()
+    nominal_account_name = serializers.CharField()
+    debit = serializers.DecimalField(max_digits=18, decimal_places=2)
+    credit = serializers.DecimalField(max_digits=18, decimal_places=2)
+    balance = serializers.DecimalField(max_digits=18, decimal_places=2)
+class GeneralLedgerSerializer(serializers.Serializer):
+    nominal_account_id = serializers.IntegerField()
+    nominal_account_code = serializers.CharField()
+    opening_balance = serializers.DecimalField(max_digits=18, decimal_places=2)
+    total_debit = serializers.DecimalField(max_digits=18, decimal_places=2)
+    total_credit = serializers.DecimalField(max_digits=18, decimal_places=2)
+    closing_balance = serializers.DecimalField(max_digits=18, decimal_places=2)
+    lines = GeneralLedgerLineSerializer(many=True)
+class GeneralLedgerQuerySerializer(serializers.Serializer):
+    nominal_account_id = serializers.IntegerField(min_value=1)
+    start_date = serializers.DateField(required=False)
+    end_date = serializers.DateTimeField(required=False)
+    financial_period_id = serializers.IntegerField(required=False, min_value=1)
 
+    def validate(self, attrs):
+        start_date = attrs.get("start_date")
+        end_date = attrs.get("end_date")
+
+        if start_date and end_date and start_date > end_date:
+            raise serializers.ValidationError({ "end_date": "End date cannot be earlier than start date." })
+        return attrs
+class TrialBalanceLineSerializer(serializers.Serializer):
+    nominal_account_id = serializers.IntegerField()
+    nominal_account_code = serializers.CharField()
+    nominal_account_name = serializers.CharField()
+    account_type = serializers.CharField()
+    debit_balance = serializers.DecimalField(max_digits=18, decimal_places=2)
+    credit_balance = serializers.DecimalField(max_digits=18, decimal_places=2)
+class TrialBalanceSerializer(serializers.Serializer):
+    as_at_date = serializers.DateTimeField()
+    total_debit = serializers.DecimalField(max_digits=18, decimal_places=2)
+    total_credit = serializers.DecimalField(max_digits=18, decimal_places=2)
+    is_balanced = serializers.BooleanField()
+    accounts = TrialBalanceLineSerializer(many=True)
+class TrialBalanceQuerySerializer(serializers.Serializer):
+    as_at_date = serializers.DateField()
+class ProfitLossAccountSerializer(serializers.Serializer):
+    nominal_account_id = serializers.IntegerField()
+    nominal_account_code = serializers.CharField()
+    nominal_account_name = serializers.CharField()
+    amount = serializers.DecimalField(max_digits=18, decimal_places=2)
+class ProfitLossSerializer(serializers.Serializer):
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
+    revenue_accounts = ProfitLossAccountSerializer(many=True)
+    expense_accounts = ProfitLossAccountSerializer(many=True)
+    total_revenue = serializers.DecimalField(max_digits=18, decimal_places=2)
+    total_expenses = serializers.DecimalField(max_digits=18, decimal_places=2)
+    net_profit_loss = serializers.DecimalField(max_digits=18, decimal_places=2)
+class ProfitLossQuerySerializer(serializers.Serializer):
+    start_date = serializers.DateTimeField()
+    end_date = serializers.DateField()
+    def validate(self, attrs):
+        if attrs["start_date"] > attrs["end_date"]:
+            raise serializers.ValidationError({ "end_date": "End date cannot be earlier than start date." })
+        return attrs
+class BalanceSheetAccountSerializer(serializers.Serializer):
+    nominal_account_id = serializers.IntegerField()
+    nominal_account_code = serializers.CharField()
+    nominal_account_name = serializers.CharField()
+    amount = serializers.DecimalField(max_digits=18, decimal_places=2)
+class BalanceSheetSerializer(serializers.Serializer):
+    as_at_date = serializers.DateField()
+    asset_accounts = BalanceSheetAccountSerializer(many=True)
+    liability_accounts = BalanceSheetAccountSerializer(many=True)
+    equity_accounts = BalanceSheetAccountSerializer(many=True)
+    total_assets = serializers.DecimalField(max_digits=18, decimal_places=2)
+    total_liabilities = serializers.DecimalField(max_digits=18, decimal_places=2)
+    total_equity = serializers.DecimalField(max_digits=18, decimal_places=2)
+    current_year_profit_loss = serializers.DecimalField(max_digits=18, decimal_places=2)
+    total_liabilities_and_equity = serializers.DecimalField(max_digits=18, decimal_places=2)
+    difference = serializers.DecimalField(max_digits=18, decimal_places=2)
+    is_balanced = serializers.BooleanField()
+class BalanceSheetQuerySerializer(serializers.Serializer):
+    as_at_date = serializers.DateField()
+    
 
