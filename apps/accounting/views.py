@@ -297,7 +297,7 @@ class JournalPostAPIView(APIView):
 
 class GeneralLedgerAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(request=GeneralLedgerQuerySerializer, responses={ 200:GeneralLedgerSerializer }, operation_id="general_ledger")
     def get(self, request):
         query_serilaizer = GeneralLedgerQuerySerializer(data=request.query_params)
         query_serilaizer.is_valid(raise_exception=True)
@@ -313,7 +313,7 @@ class GeneralLedgerAPIView(APIView):
         )
 class TrialBalanceAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(request=TrialBalanceQuerySerializer, responses={ 200:TrialBalanceSerializer }, operation_id="trial_balance")
     def get(self, request):
         query_serializer = TrialBalanceQuerySerializer(data=request.query_params)
         query_serializer.is_valid(raise_exception=True)
@@ -329,6 +329,7 @@ class TrialBalanceAPIView(APIView):
         )
 class ProfitLossAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    @extend_schema(request=ProfitLossQuerySerializer, responses={ 200:ProfitLossSerializer }, operation_id="profit_loss")
     def get(self, request):
         query_serializer = ProfitLossQuerySerializer(data=request.query_params)
         query_serializer.is_valid(raise_exception=True)
@@ -344,6 +345,7 @@ class ProfitLossAPIView(APIView):
         )
 class BalanceSheetAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    @extend_schema(request=BalanceSheetQuerySerializer, responses={ 200:BalanceSheetSerializer }, operation_id="balance_sheet")
     def get(self, request):
         query_serializer = BalanceSheetQuerySerializer(data=request.query_params)
         query_serializer.is_valid(raise_exception=True)
