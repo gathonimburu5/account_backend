@@ -39,6 +39,7 @@ class NominalAccount(models.Model):
     is_control_account = models.BooleanField(default=False)
     is_posting_account = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
+    is_temporary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

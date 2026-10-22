@@ -78,6 +78,7 @@ class NominalAccountSerializer(serializers.ModelSerializer):
             "is_control_account",
             "is_posting_account",
             "is_active",
+            'is_temporary',
             "created_at",
             "updated_at",
         )
@@ -99,6 +100,7 @@ class NominalAccountCreateUpdateSerializer(serializers.Serializer):
     is_control_account = serializers.BooleanField(required=False, default=False)
     is_posting_account = serializers.BooleanField(required=False, default=True)
     is_active = serializers.BooleanField(required=False, default=True)
+    is_temporary = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
         parent = attrs.get("parent")
