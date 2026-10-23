@@ -140,6 +140,80 @@ class ProductSerialNumber(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     class Meta:
         ordering = ["product__name", "serial_number"]
+        constraints = [
+            models.UniqueConstraint(fields=["product", "serial_number"], name="unique_product_serial_number",),
+        ]
+    def clean(self):
+        errors = {}
+        if (self.product_id and self.product.tracking_type not in (Product.TrackingType.SERIAL, Product.TrackingType.BATCH_SERIAL,)):
+            errors["product"] = "This product is not configured for serial tracking."
+        if (self.batch_id and self.product_id and self.batch.product_id != self.product_id):
+            errors["batch"] = "Batch must belong to the same product."
+        if errors:
+            return ValidationError(errors)
+    def __str__(self):
+        return f"{self.product.code} - {self.serial_number}"
+class StockBalance(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="stock_balances",)
+    batch = models.ForeignKey(ProductBatch, on_delete=models.PROTECT, related_name="stock_balance", null=True, blank=True)
+    quantity = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("0"))
+    average_cost = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("0"), validators=[MinValueValidator(Decimal("0"))])
+    updated_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["product"], condition=Q(batch__isnull=True), name="unique_product_aggregate_stock_balance"),
+            models.UniqueConstraint(
+                fields=["product", "batch"],
+                condition=Q(batch__isnull=False),
+                name="unique_product_batch_stock_balance",
+            ),
+            models.CheckConstraint(
+                condition=Q(quantity__gte=0),
+                name="stock_balance_quantity_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=Q(average_cost__gte=0),
+                name="stock_balance_average_cost_nonnegative",
+            ),
+        ]
+    @property
+    def stock_value(self):
+        return self.quantity * self.average_cost
+    def clean(self):
+        if self.batch_id and self.product_id:
+            if self.batch.product_id != self.product_id:
+                raise ValidationError({ "batch":"Batch must belong to the same product." })
+    def __str__(self):
+        return f"{self.product.code}: {self.quantity}"
+class StockMovement(models.Model):
+    class MovementType(models.TextChoices):
+        RECEIPT = "RECEIPT", "Purchase Receipt"
+        SALE = "SALE", "Sale"
+        CUSTOMER_RETURN = "CUSTOMER_RETURN", "Customer Return"
+        SUPPLIER_RETURN = "SUPPLIER_RETURN", "Supplier Return"
+        ISSUE = "ISSUE", "Stock Issue"
+        ADJUSTMENT_IN = "ADJUSTMENT_IN", "Positive Adjustment"
+        ADJUSTMENT_OUT = "ADJUSTMENT_OUT", "Negative Adjustment"
+        REVERSAL = "REVERSAL", "Reversal"
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="stock_movements")
+    movement_type = models.CharField(max_length=25, choices=MovementType.choices)
+    transaction_quantity = models.DecimalField(max_digits=18, decimal_places=6, validators=[MinValueValidator(Decimal("0"))])
+    transaction_unit = models.ForeignKey(UnitOfMeasure, on_delete=models.PROTECT, related_name="stock_movements")
+    conversion_factor = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("1"), validators=[MinValueValidator(Decimal("0.000001"))])
+    base_quantity = models.DecimalField(max_digits=18, decimal_places=6, validators=[MinValueValidator(Decimal("0.000001"))])
+    batch = models.ForeignKey(ProductBatch, on_delete=models.PROTECT, related_name="stock_movements", null=True, blank=True)
+    serial_number = models.ForeignKey(ProductSerialNumber, on_delete=models.PROTECT, related_name="stock_movements", null=True, blank=True)
+    unit_cost = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("0"), validators=[MinValueValidator(Decimal("0"))])
+    total_cost = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("0"), validators=[Decimal("0")])
+    movement_date = models.DateTimeField()
+    source_type = models.CharField(max_length=50, blank=True)
+    source_id = models.PositiveBigIntegerField(null=True, blank=True)
+    source_line_id = models.PositiveBigIntegerField(null=True, blank=True)
+    reference = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    reversal_of = models.ForeignKey("self", on_delete=models.PROTECT, related_name="stock_movements", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey("auth.User", on_delete=models.PROTECT, related_name="stock_movements", null=True, blank=True)
         
 
 
