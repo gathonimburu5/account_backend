@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 from django.db.models import Q
+from django.conf import settings
 
 class Category(models.Model):
     code = models.CharField(max_length=80, unique=True)
@@ -213,7 +214,90 @@ class StockMovement(models.Model):
     notes = models.TextField(blank=True)
     reversal_of = models.ForeignKey("self", on_delete=models.PROTECT, related_name="stock_movements", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey("auth.User", on_delete=models.PROTECT, related_name="stock_movements", null=True, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="stock_movements", null=True, blank=True)
+    class Meta:
+        ordering = ["-movement_date", "-id"]
+        indexes = [
+            models.indexes(fields=["product", "movement_date"]),
+            models.indexes(fields=["movement_type", "movement_date"]),
+            models.indexes(fields=["source_type", "source_id"]),
+        ]
+        constraints = [
+            models.CheckConstraint(condition=Q(transaction_quantity__gt=0), name="stock_movement_transaction_qty_positive"),
+            models.CheckConstraint(condition=Q(base_quantity__gt=0), name="stock_movement_base_qty_positive",),
+            models.CheckConstraint(condition=Q(conversion_factor__gt=0), name="stock_movement_conversion_positive",),
+            models.CheckConstraint(condition=Q(unit_cost__gte=0), name="stock_movement_unit_cost_nonnegative",),
+            models.CheckConstraint(condition=Q(total_cost__gte=0), name="stock_movement_total_cost_nonnegative",),
+        ]
+    def clean(self):
+        errors = {}
+        if self.product_id and not self.product.is_stock_tracked:
+            errors["product"] = "Cannot move stock for a non-stock product."
+        if (self.product_id and self.transaction_unit_id and self.transaction_unit_id != self.product.base_unit_id):
+            conversion_exists = ProductUnitConverson.objects.filter(
+                product_id=self.product_id, unit_id=self.transaction_unit_id,
+            ).exists()
+            if not conversion_exists:
+                errors["transaction_unit"] = ("No conversion is configured for this product and unit.")
+        if (self.batch_id and self.product_id and self.batch.product_id != self.product_id):
+            errors["batch"] = "Batch must belong to the same product."
+        if (self.serial_number_id and self.product_id and self.serial_number.product_id != self.product_id):
+            errors["serial_number"]=("Serial number must belong to the same product.")
+        if errors:
+            raise ValidationError(errors)
+    def __str__(self):
+        return (
+            f"{self.product.code} - {self.movement_type} "
+            f"- {self.base_quantity}"
+        )
+class StockTake(models.Model):
+    class StatusChoices(models.TextChoices):
+        DRAFT = "DRAFT", "Draft"
+        APPROVED = "APPROVED", "Approved"
+        CANCELLED = "CANCELLED", "Cancelled"
+    reference = models.CharField(max_length=50, unique=True)
+    stock_take_date = models.DateField()
+    status = models.CharField(max_length=15, choices=StatusChoices.choices, default=StatusChoices.DRAFT)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="stock_take_created", null=True, blank=True)
+    class Meta:
+        ordering = ["-stock_take_date", "-id"]
+    def __str__(self):
+        return self.reference
+class StockTakeLine(models.Model):
+    stock_take = models.ForeignKey(StockTake, on_delete=models.CASCADE, related_name="lines",)
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="stock_take_lines",)
+    batch = models.ForeignKey(ProductBatch, on_delete=models.PROTECT, related_name="stock_take_lines", null=True, blank=True,)
+    expected_quantity = models.DecimalField(max_digits=18, decimal_places=6, validators=[MinValueValidator(Decimal("0"))],)
+    counted_quantity = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True, validators=[MinValueValidator(Decimal("0"))],)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["stock_take", "product"], condition=Q(batch__isnull=True), name="unique_stock_take_product",),
+            models.UniqueConstraint(fields=["stock_take", "product", "batch"], condition=Q(batch__isnull=False), name="unique_stock_take_product_batch",),
+        ]
+
+    @property
+    def variance(self):
+        if self.counted_quantity is None:
+            return None
+
+        return self.counted_quantity - self.expected_quantity
+
+    def clean(self):
+        errors = {}
+
+        if (self.batch_id and self.product_id and self.batch.product_id != self.product_id):
+            errors["batch"] = "Batch must belong to the same product."
+
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return f"{self.stock_take.reference} - {self.product.code}"
         
 
 
